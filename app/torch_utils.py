@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 import torchaudio
 
@@ -107,8 +108,8 @@ class TextTransform:
 text_transform = TextTransform()
 
 def preprocessing(audio_filename: str, word: str):
+    print(f"from preprocessing: {word} ({type(word)})")
     waveform, _ = torchaudio.load(audio_filename)
-
     label = text_transform.one_hot_enc(word).transpose(1,0)
 
     # spectrogram
@@ -117,12 +118,18 @@ def preprocessing(audio_filename: str, word: str):
 
     return specgram.unsqueeze(0), label.unsqueeze(0)
 
-def get_prediction(spectrogram, label):
-    spectrogram = spectrogram.transpose(0,1)[:,:,0,:]
+def get_predictions(spectrogram, label):
+    spectrogram = spectrogram.transpose(0,1)[0,:,:,:]
     _,word_size,_ = label.size()
 
     # initial states
     h0 = torch.ones(4, word_size, 20)
     c0 = torch.ones(4, word_size, 20)
 
-    return model(spectrogram, label, (h0, c0))[:,:,0]
+    return model(spectrogram, label, (h0, c0))[0,:,0].tolist()
+
+
+if __name__ == "__main__":
+    spectrogram, label = preprocessing("0001.wav", "have")
+    score = get_predictions(spectrogram, label)
+    print(f"result: {score}, word: have")

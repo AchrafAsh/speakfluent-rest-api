@@ -1,9 +1,13 @@
-from flask import Flask, request, jsonify
+import os
+from flask import Flask, request, jsonify, render_template
 from urllib import parse
 
-from torch_utils import preprocessing, get_prediction
+from torch_utils import preprocessing, get_predictions
+
+UPLOAD_FOLDER = './'
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 def parse_urlargs(url):
     query = parse.parse_qs(parse.urlparse(url).query)
@@ -13,28 +17,27 @@ def allowed_file(filename):
     """ wav only """
     return "." in filename and filename.rsplit(".", 1)[1].lower() == "wav"
 
+@app.route('/')
+def index():
+    return render_template("index.html")
+
 @app.route("/predict", methods=["POST"])
 def predict():
-    if request.method == 'POST':
-        params = request.data.decode("utf-8").split("&")
-        data = { "filename": params[0].split("=")[1], "word": params[1].split("=")[1] }
-        
-        if data is None or data["filename"] == "": return jsonify({ "error": "no file" })
+    form = request.form
+    file = request.files.get("audio")
+    word = form.get("word")
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
+    
+    spectrogram, label = preprocessing(file.filename, word)
+    score = get_predictions(spectrogram, label)
 
-        if not allowed_file(data["filename"]): return jsonify({ "error": "format not supported" })
+    return render_template("score.html", score=score, word=word)
 
-        try:
-            spectrogram, label = preprocessing("test/"+data["filename"], data["word"])
-            score = prediction(spectrogram, label)
 
-            return jsonify({ "result": score, "word": data["word"] })
-
-        except:
-            return jsonify({ "error": "error during prediction" })
-
-    # load audio
-
-    # preprocessing
-    # predict 
-    # return json data
-    return jsonify({ "result": 1 })
+@app.route("/collect", methods=["POST"])
+def collect():
+    file = request.files.get("audio")
+    form = request.form
+    label = form.get("label")
+    score = form.get("score") # input ex: 1;0;1;0
+    return None
