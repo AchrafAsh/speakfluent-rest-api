@@ -108,8 +108,7 @@ class TextTransform:
 text_transform = TextTransform()
 
 def preprocessing(audio_filename: str, word: str):
-    print(f"from preprocessing: {word} ({type(word)})")
-    waveform, _ = torchaudio.load(audio_filename)
+    waveform, _ = torchaudio.load_wav(audio_filename)
     label = text_transform.one_hot_enc(word).transpose(1,0)
 
     # spectrogram
